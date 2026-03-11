@@ -1,0 +1,29 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"amplify:CreateApp",
+				"amplify:UpdateApp",
+				"amplify:DeleteApp",
+				"amplify:GetApp",
+				"amplify:ListApps",
+				"amplify:CreateBranch",
+				"amplify:UpdateBranch",
+				"amplify:DeleteBranch",
+				"amplify:StartDeployment",
+				"amplify:CreateBranch",
+				"amplify:UpdateBranch",
+				"amplify:DeleteBranch",
+				"amplify:GetBranch",
+				"amplify:ListBranches",
+				"wafv2:PutPermissionPolicy",
+				"wafv2:DeleteWebACL",
+				"wafv2:GetWebACL",
+				"wafv2:ListWebACLs"
+			],
+			"Resource": "*"
+		}
+	]
+}

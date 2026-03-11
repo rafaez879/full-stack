@@ -1,8 +1,13 @@
 # =============================================================================
 # Frontend: Amplify (build y hosting del React desde Git)
-# Proyecto independiente. Requiere backend desplegado (lee api_url del state).
+# Repositorio: puede ser monorepo (backend + frontend). Si el frontend está en
+# la subcarpeta "frontend", se usa app_root = "frontend" (variable por defecto).
+# Requiere backend desplegado (variable api_url).
 # Despliegue: terraform init && terraform apply
 # El código React se recompila en cada git push a la rama configurada.
+#
+# Permisos IAM: el usuario que ejecuta Terraform debe tener permisos Amplify.
+# Ver iam-terraform-frontend-policy.json (adjuntar esa política al usuario IAM).
 # =============================================================================
 
 terraform {
@@ -32,9 +37,8 @@ variable "github_token" {
 }
 
 variable "repository" {
-  description = "URL del repositorio Git del frontend"
+  description = "URL del repositorio Git (puede ser monorepo con backend y frontend; Amplify usará la carpeta indicada en app_root)"
   type        = string
-  default     = "https://github.com/javiercl/vite-hola-fullstack.git"
 }
 
 variable "branch_name" {
@@ -43,24 +47,35 @@ variable "branch_name" {
   default     = "main"
 }
 
-# Carpeta del frontend, para que solo se compile en la carpeta del frontend
 variable "app_root" {
-  description = "Carpeta del frontend en el repo (monorepo). Dejar vacío si el repo solo tiene el frontend."
+  description = "Carpeta del frontend dentro del repo. Para monorepo (backend + frontend) usar 'frontend'. Dejar vacío si la raíz del repo es el frontend."
   type        = string
   default     = "frontend"
 }
 
-resource "aws_amplify_app" "hola_fullstack" {
-  name        = "hola-fullstack"
-  repository  = var.repository
-  oauth_token = var.github_token
-
-  environment_variables = merge(
-    { VITE_API_URL = var.api_url },
-    var.app_root != "" ? { AMPLIFY_MONOREPO_APP_ROOT = var.app_root } : {}
-  )
-
-  build_spec = <<-EOT
+# Build spec en locals para evitar ternario con dos heredocs (el parser falla).
+locals {
+  build_spec_monorepo = <<-EOT
+version: 1
+applications:
+  - appRoot: ${var.app_root}
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+EOT
+  build_spec_simple = <<-EOT
 version: 1
 frontend:
   phases:
@@ -78,6 +93,20 @@ frontend:
     paths:
       - node_modules/**/*
 EOT
+  build_spec = var.app_root != "" ? local.build_spec_monorepo : local.build_spec_simple
+}
+
+resource "aws_amplify_app" "hola_fullstack" {
+  name        = "hola-fullstack"
+  repository  = var.repository
+  oauth_token = var.github_token
+
+  environment_variables = merge(
+    { VITE_API_URL = var.api_url },
+    var.app_root != "" ? { AMPLIFY_MONOREPO_APP_ROOT = var.app_root } : {}
+  )
+
+  build_spec = local.build_spec
 
   custom_rule {
     source = "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|ttf|map|json)$)([^.]+$)/>"
