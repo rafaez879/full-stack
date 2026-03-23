@@ -166,3 +166,35 @@ output "api_url" {
   description = "URL base de la API de tareas"
   value       = aws_apigatewayv2_stage.default.invoke_url
 }
+
+# Crear el Pool de Usuarios
+resource "aws_cognito_user_pool" "pool" {
+  name = "task_user_pool"
+
+  password_policy {
+    minimum_length = 8
+  }
+
+  auto_verified_attributes = ["email"]
+}
+
+# Crear el Cliente de la Aplicación (necesario para el Frontend)
+resource "aws_cognito_user_pool_client" "client" {
+  name         = "task_app_client"
+  user_pool_id = aws_cognito_user_pool.pool.id
+  
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_SRP_AUTH"
+  ]
+}
+
+# Output para usar en el Frontend
+output "cognito_user_pool_id" {
+  value = aws_cognito_user_pool.pool.id
+}
+
+output "cognito_client_id" {
+  value = aws_cognito_user_pool_client.client.id
+}
