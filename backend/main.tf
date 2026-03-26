@@ -175,7 +175,7 @@ resource "aws_cognito_user_pool" "pool" {
     minimum_length = 8
   }
 
-  auto_verified_attributes = ["email"]
+  # Sin verificación de email: el usuario puede loguearse inmediatamente después de registrarse
 }
 
 # Crear el Cliente de la Aplicación (necesario para el Frontend)

@@ -20,75 +20,116 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
 
-  // 1. Vista Pública: Cargar tareas (GET)
+  // Vista Pública: Cargar tareas (GET)
   const fetchTasks = async () => {
     try {
-      const res = await fetch(`${API_URL}/tasks`);
+      const res = await fetch(`${API_URL}tasks`);
       const data = await res.json();
-      setTasks(data);
+      setTasks(Array.isArray(data) ? data : []);
     } catch (err) { console.error("Error cargando:", err); }
   };
 
   useEffect(() => { fetchTasks(); }, []);
 
-  // 2. Funciones CRUD (Solo para Vista Privada)
+  // Funciones CRUD (Solo para Vista Privada)
   const addTask = async () => {
-    if (!newTask) return;
-    await fetch(`${API_URL}/tasks`, {
+    if (!newTask.trim()) return;
+    await fetch(`${API_URL}tasks`, {
       method: 'POST',
-      body: JSON.stringify({ title: newTask }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTask.trim() }),
     });
     setNewTask('');
     fetchTasks();
   };
 
   const deleteTask = async (id) => {
-    await fetch(`${API_URL}/tasks/${id}`, { method: 'DELETE' });
+    await fetch(`${API_URL}tasks/${id}`, { method: 'DELETE' });
     fetchTasks();
   };
 
+  const handleKey = (e) => { if (e.key === 'Enter') addTask(); };
+
   return (
     <div className="container">
-      <h1>Gestor de Tareas Fullstack</h1>
 
-      {/* --- VISTA PÚBLICA --- */}
-      <section className="public-view">
-        <h2>Lista Global (Pública)</h2>
-        <ul>
-          {tasks.map(task => (
-            <li key={task.id}>{task.title}</li>
-          ))}
-        </ul>
-      </section>
+      {/* ── Header ── */}
+      <header className="app-header">
+        <h1>Gestor de Tareas</h1>
+        <p>Fullstack · DynamoDB · Lambda · Cognito</p>
+      </header>
 
-      <hr />
-
-      {/* --- VISTA PRIVADA (PROTEGIDA) --- */}
-      <Authenticator>
-        {({ signOut, user }) => (
-          <main className="private-view">
-            <h2>Panel CRUD - Hola, {user.username}</h2>
-            <div className="form">
-              <input 
-                value={newTask} 
-                onChange={(e) => setNewTask(e.target.value)} 
-                placeholder="Nueva tarea..." 
-              />
-              <button onClick={addTask}>Agregar</button>
-            </div>
-
-            <ul>
+      {/* ── Vista Pública ── */}
+      <section className="card">
+        <div className="card-title">🌐 Lista Global (Pública)</div>
+        {tasks.length === 0
+          ? <p className="empty-msg">No hay tareas todavía.</p>
+          : (
+            <ul className="task-list">
               {tasks.map(task => (
-                <li key={task.id}>
-                  {task.title} 
-                  <button className="delete-btn" onClick={() => deleteTask(task.id)}>Eliminar</button>
+                <li key={task.id} className="task-item">
+                  <span className="task-dot" />
+                  {task.title}
                 </li>
               ))}
             </ul>
-            <button className="signout-btn" onClick={signOut}>Cerrar Sesión</button>
-          </main>
+          )
+        }
+      </section>
+
+      {/* ── Vista Privada (protegida con Cognito) ── */}
+      <Authenticator>
+        {({ signOut, user }) => (
+          <section className="card">
+            <div className="card-title">🔒 Panel Privado</div>
+
+            {/* Barra de usuario */}
+            <div className="user-bar">
+              <div className="user-badge">
+                <div className="avatar">
+                  {user.username?.[0]?.toUpperCase() ?? '?'}
+                </div>
+                Hola, <strong>{user.username}</strong>
+              </div>
+              <button className="btn-signout" onClick={signOut}>
+                Cerrar sesión
+              </button>
+            </div>
+
+            {/* Formulario agregar tarea */}
+            <div className="add-form">
+              <input
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Escribe una nueva tarea…"
+              />
+              <button className="btn-primary" onClick={addTask}>Agregar</button>
+            </div>
+
+            {/* Lista CRUD */}
+            {tasks.length === 0
+              ? <p className="empty-msg">Aún no hay tareas. ¡Agrega una!</p>
+              : (
+                <ul className="crud-list">
+                  {tasks.map(task => (
+                    <li key={task.id} className="crud-item">
+                      <span>{task.title}</span>
+                      <button
+                        className="btn-danger"
+                        onClick={() => deleteTask(task.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
+            }
+          </section>
         )}
       </Authenticator>
+
     </div>
   );
 }
